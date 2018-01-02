@@ -5,39 +5,46 @@ use Slim\Http\Response;
 
 // Routes
 
-//1348339814
+// get facebook profile by id
 $app->get('/profile/facebook/{id}', function (Request $request, Response $response, array $args) {
 
-  $id = $request->getAttribute('id');
+	$id = $request->getAttribute('id');
 
-  $fb = new \Facebook\Facebook([
-  'app_id' => '2084223635139334',
-  'app_secret' => 'cdcda49183a048a820154e0db4ed0343',
-  'default_graph_version' => 'v2.11'
-//  'default_access_token' => 'cdcda49183a048a820154e0db4ed0343', // optional
-]);
-    	
-$helper = $fb->getRedirectLoginHelper(); 
-try {
+	// minimal validation if the id is numeric
+	if(!is_numeric($id)){
+		return $this->response->withJson(["response"=>"error"],500);
+	}
 
-  $accessToken = $helper->getAccessToken(); 
-  // Returns a `Facebook\FacebookResponse` object
-   $responseFacebook = $fb->get('/'.$id.'?fields=id,first_name,last_name', "EAAdnlyFnqwYBAK4GXBMyEwmGFFODiO8uTNyRDENCvlAypPlB29GVEavfcPgxMdSHRukzkgFPBzzMnZAeraziAkNTZBXEsJVWNrqmWx4XTL3scVCLP1XV2kKBG5Bs46JLd912dKPZA9ZBZCaziNoyK68DQxjJnZCw0PkWh3nK5uNnXGmG9fuksRycOaDBsHDsDgAIBuVXCQqQZDZD");
+	// config params facebook
+	$configFacebook = $this->get('settings')['facebook'];
 
-} catch(\Facebook\Exceptions\FacebookResponseException $e) {
-  // When Graph returns an error
-  echo 'Graph returned an error: ' . $e->getMessage();
-  exit;
-} catch(\Facebook\Exceptions\FacebookSDKException $e) {
-  // When validation fails or other local issues
-  echo 'Facebook SDK returned an error: ' . $e->getMessage();
-  exit;
-}
+	// object facebook api
+	$fb = new \Facebook\Facebook([
+		'app_id' => $configFacebook['app_id'],
+		'app_secret' =>  $configFacebook['app_secret'],
+		'default_graph_version' => 'v2.11'
+		]);
+
+	try {
+	    // Returns a `Facebook\FacebookResponse` object
+		$responseFacebook = $fb->get('/'.$id.'?fields=id,first_name,last_name', $configFacebook['token_temporal']);
+
+	} catch(\Facebook\Exceptions\FacebookResponseException $e) {
+  		// When Graph returns an error
+		echo 'Graph returned an error: ' . $e->getMessage();
+		exit;
+	} catch(\Facebook\Exceptions\FacebookSDKException $e) {
+  		// When validation fails or other local issues
+		echo 'Facebook SDK returned an error: ' . $e->getMessage();
+		exit;
+	}
 	
-    $this->logger->info("Slim-Skeleton '/' route");
+	// get user data 
 	$me = $responseFacebook->getGraphUser();
-   
-    $responseData = ["id"=>$me->getId(),"firstName"=>$me->getFirstName(),"lastName"=>$me->getLastName()];
+
+	// build response json 
+	$responseData = ["id"=>$me->getId(),"firstName"=>$me->getFirstName(),"lastName"=>$me->getLastName()];
+    
     // Render index view
-    return $this->response->withJson($responseData,200);
+	return $this->response->withJson($responseData,200);
 });
